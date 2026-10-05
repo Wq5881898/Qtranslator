@@ -1,5 +1,9 @@
 # Translator
 
+## Qtranslator 1.2.0 desktop upgrade
+
+The Windows desktop window now has Translation and AI Chat tabs, configurable OpenAI Chat Completions / Responses and Anthropic Messages services, and Ctrl+Shift+D screenshot-to-chat input. See [the Chinese setup guide](docs/QTRANSLATOR_AI_ZH.md). The original Ctrl+Shift+X translation workflow is retained from v1.1.8.
+
 Translator is a lightweight, local-first browser extension for daily English learning.
 
 ## Stage 2 Windows companion v1.1.6

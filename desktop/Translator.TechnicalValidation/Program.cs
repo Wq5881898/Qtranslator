@@ -11,6 +11,12 @@ using System.Diagnostics;
 using Translator.Core;
 using Translator.Desktop;
 
+if (args is ["--chat"])
+    return await ChatValidation.RunAsync();
+
+if (args is ["--chat-render", var previewDirectory])
+    return ChatValidation.Render(previewDirectory);
+
 if (args is ["--image", var imagePath])
 {
     await using var image = File.OpenRead(imagePath);
@@ -82,6 +88,7 @@ var checks = new (string Name, Func<Task> Run)[]
     ("global shortcut contract", ValidateGlobalShortcutContractAsync),
     ("packaged English OCR on in-memory image", ValidatePackagedEnglishOcrAsync),
     ("non-English OCR is rejected with a reason", ValidateNonEnglishOcrAsync),
+    ("chat OCR preserves Chinese input", ValidateChatOcrAsync),
     ("Windows local OCR on in-memory image", ValidateWindowsOcrAsync),
 };
 var failed = 0;
@@ -374,6 +381,13 @@ static MemoryStream CreateTestImage(string content, string typeface)
     stream.Position = 0;
     return stream;
 }
+static async Task ValidateChatOcrAsync()
+{
+    await using var image = CreateTestImage("这是一个中文截图测试", "Microsoft YaHei UI");
+    var result = await new PackagedEnglishOcrProvider(preserveAllText: true).RecognizeAsync(image, CancellationToken.None);
+    Assert(result.Text.Any(c => c is >= '\u3400' and <= '\u9FFF'), "AI screenshot draft lost Chinese OCR text.");
+}
+
 static void Assert(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
 
 static Rectangle? FindVisibleWindow(string titleFragment)

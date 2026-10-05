@@ -9,7 +9,9 @@ public partial class MainWindow : Window
 {
     private readonly BrowserBridgeTranslationProvider _translation = new();
     private readonly EnglishOcrProvider _ocr = new();
+    private readonly EnglishOcrProvider _chatOcr = new(primary: new PackagedEnglishOcrProvider(preserveAllText: true));
     private readonly GlobalHotKeyService _hotKey = new();
+    private readonly GlobalHotKeyService _chatHotKey = new(0x5453);
     private ShortcutSettings _shortcutSettings = ShortcutSettingsStore.Load();
     private TranslationResult? _currentTranslation;
     private bool _busy;
@@ -25,6 +27,8 @@ public partial class MainWindow : Window
         Activated += OnActivated;
         Closed += OnClosed;
         _hotKey.Pressed += OnHotKeyPressed;
+        _chatHotKey.Pressed += OnChatHotKeyPressed;
+        ChatPanel.CaptureRequested += OnChatHotKeyPressed;
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -63,6 +67,8 @@ public partial class MainWindow : Window
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
         RegisterShortcut();
+        if (!_chatHotKey.TryRegister(this, new ShortcutSettings(ShortcutModifiers.ControlShift, "D"), out var error))
+            ChatPanel.SetCaptureStatus(error ?? "Ctrl+Shift+D 不可用，请用截图输入按钮。");
     }
 
     private void RegisterShortcut()
@@ -117,6 +123,10 @@ public partial class MainWindow : Window
     {
         _hotKey.Pressed -= OnHotKeyPressed;
         _hotKey.Dispose();
+        _chatHotKey.Pressed -= OnChatHotKeyPressed;
+        _chatHotKey.Dispose();
+        ChatPanel.CaptureRequested -= OnChatHotKeyPressed;
+        ChatPanel.Close();
         if (_speechProcess is { HasExited: false })
         {
             try { _speechProcess.Kill(entireProcessTree: true); } catch { }
@@ -141,6 +151,8 @@ public partial class MainWindow : Window
 
     private async Task CaptureRecognizeAndTranslateAsync()
     {
+        if (_busy) return;
+        MainTabs.SelectedIndex = 0;
         _currentTranslation = null;
         RecognizedText.Clear();
         TranslatedText.Clear();
@@ -248,6 +260,33 @@ public partial class MainWindow : Window
             DesktopErrorLog.Write("Translation operation failed", exception);
             StatusText.Text = $"Translation failed: {FriendlyError(exception)}";
         }
+    }
+
+    private async void OnChatHotKeyPressed(object? sender, EventArgs e)
+    {
+        if (_busy) { ChatPanel.SetCaptureStatus("截图或翻译正在运行，请稍后再试。"); return; }
+        MainTabs.SelectedItem = ChatTab;
+        SetBusy(true);
+        ChatPanel.SetCaptureStatus("请选择截图区域，Esc 取消。");
+        Hide();
+        try
+        {
+            await Task.Delay(150);
+            using var image = ScreenRegionCapture.CaptureWithOverlay();
+            RestoreWindow();
+            if (image is null) { ChatPanel.SetCaptureStatus("已取消截图。"); return; }
+            ChatPanel.SetCaptureStatus("正在本机识别文字…");
+            var result = await _chatOcr.RecognizeAsync(image, CancellationToken.None);
+            if (string.IsNullOrWhiteSpace(result.Text))
+            { ChatPanel.SetCaptureStatus("没有识别到文字，请选取更清晰的区域。"); return; }
+            ChatPanel.AppendCapturedText(result.Text);
+        }
+        catch (Exception ex)
+        {
+            RestoreWindow();
+            ChatPanel.SetCaptureStatus($"截图识别失败：{FriendlyError(ex)}");
+        }
+        finally { SetBusy(false); }
     }
 
     internal void ReportUnexpectedError(Exception exception)
@@ -433,6 +472,7 @@ public partial class MainWindow : Window
     private void SetBusy(bool busy, string? status = null)
     {
         _busy = busy;
+        ChatPanel.SetCaptureBusy(busy);
         CaptureButton.IsEnabled = !busy;
         TranslateButton.IsEnabled = !busy;
         SettingsButton.IsEnabled = !busy;

@@ -8,10 +8,12 @@ namespace Translator.Desktop;
 public sealed class PackagedEnglishOcrProvider : IOcrProvider
 {
     private readonly string _dataPath;
+    private readonly bool _preserveAllText;
 
-    public PackagedEnglishOcrProvider(string? dataPath = null)
+    public PackagedEnglishOcrProvider(string? dataPath = null, bool preserveAllText = false)
     {
         _dataPath = dataPath ?? Path.Combine(AppContext.BaseDirectory, "tessdata");
+        _preserveAllText = preserveAllText;
     }
 
     public string Id => "packaged-bilingual-ocr";
@@ -43,7 +45,7 @@ public sealed class PackagedEnglishOcrProvider : IOcrProvider
         using var image = Pix.LoadFromMemory(buffer.ToArray());
         var english = Recognize(image, "eng");
         var bilingual = Recognize(image, "eng+chi_sim");
-        var text = TextRules.MergeEnglishFromBilingualOcr(english.Text, bilingual.Text);
+        var text = _preserveAllText ? bilingual.Text : TextRules.MergeEnglishFromBilingualOcr(english.Text, bilingual.Text);
         var confidence = bilingual.Text.Any(character => character is >= '\u3400' and <= '\u9FFF')
             ? bilingual.Confidence
             : english.Confidence;

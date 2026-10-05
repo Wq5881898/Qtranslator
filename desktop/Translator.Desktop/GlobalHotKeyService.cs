@@ -13,7 +13,9 @@ public sealed class GlobalHotKeyService : IDisposable
     private const uint ModControl = 0x0002;
     private const uint ModShift = 0x0004;
     private const uint ModNoRepeat = 0x4000;
-    private const int HotKeyId = 0x5452;
+    private readonly int _hotKeyId;
+
+    public GlobalHotKeyService(int hotKeyId = 0x5452) => _hotKeyId = hotKeyId;
 
     private HwndSource? _source;
     private bool _registered;
@@ -47,7 +49,7 @@ public sealed class GlobalHotKeyService : IDisposable
         DisplayName = settings.DisplayName;
         _registered = RegisterHotKey(
             handle,
-            HotKeyId,
+            _hotKeyId,
             modifiers | ModNoRepeat,
             (uint)KeyInterop.VirtualKeyFromKey(key));
         if (_registered)
@@ -72,7 +74,7 @@ public sealed class GlobalHotKeyService : IDisposable
 
         if (_registered)
         {
-            UnregisterHotKey(_source.Handle, HotKeyId);
+            UnregisterHotKey(_source.Handle, _hotKeyId);
         }
         _source.RemoveHook(ProcessWindowMessage);
         _source = null;
@@ -86,7 +88,7 @@ public sealed class GlobalHotKeyService : IDisposable
         IntPtr lParam,
         ref bool handled)
     {
-        if (message == WmHotKey && wParam.ToInt32() == HotKeyId)
+        if (message == WmHotKey && wParam.ToInt32() == _hotKeyId)
         {
             handled = true;
             Pressed?.Invoke(this, EventArgs.Empty);

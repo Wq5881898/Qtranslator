@@ -1,5 +1,13 @@
 # Changelog
 
+## Qtranslator desktop 1.2.0
+
+- Upgrade the Windows desktop base to Translator v1.1.8 and add Translation / AI Chat tabs.
+- Add configurable OpenAI Chat Completions, OpenAI Responses, and Anthropic Messages APIs with editable profiles, URL, model, key, auth header, system prompt, and token limits.
+- Add streaming conversations, cancellation, explicit retry, copy, and new conversation controls.
+- Reuse screenshot OCR with Ctrl+Shift+D to draft AI prompts, retaining bilingual text and the existing translation shortcut.
+- Protect AI configuration with Windows-user DPAPI and validate protocol behavior with simulated services.
+
 ## 1.1.8 — 2026-08-27
 
 - Convert Datamuse/CMU ARPAbet pronunciation codes to validated learner-facing IPA and reject unparseable codes.
