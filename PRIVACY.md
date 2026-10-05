@@ -1,14 +1,14 @@
-# Translator Privacy Policy
+# Qtranslator Privacy Policy
 
 Last updated: 2026-10-05
 
-Translator is a local-first English-learning browser extension.
+Qtranslator includes an independent Windows application and companion browser extension.
 
 ## Qtranslator desktop AI chat
 
 The optional desktop AI Chat tab sends manually confirmed messages, the system prompt, and successful turns in the current conversation directly to the configured API endpoint. The configured API key is sent in the selected authentication header. Changing the selected provider sends the current conversation's successful history to that provider when the next message is sent. No automatic fallback provider is used.
 
-Ctrl+Shift+D captures a screen region for local OCR and places recognized text in an editable draft. Screenshots are not uploaded. Drafts are sent only after the user chooses Send. Chat history stays in memory and is discarded when the application closes; favorites remain in their existing local store.
+Ctrl+Shift+D captures a screen region for local OCR and places recognized text in an editable draft. Screenshots are not uploaded. Drafts are sent only after the user chooses Send. Chat history stays in memory and is discarded when the application closes; Qtranslator favorites use their independent local store at `%LOCALAPPDATA%/Qtranslator/favorites.json`. The legacy Translator store is not read, migrated or modified.
 
 AI settings and keys are encrypted for the current Windows user using DPAPI at `%LOCALAPPDATA%/Qtranslator/ai-settings.bin`. Keys are not included in source code, packages, or application logs. To remove AI configuration, close the application and delete that file. Browser extension data clearing does not delete desktop AI settings. The selected third-party service applies its own data-retention policy; the Responses request sets `store: false` where supported.
 

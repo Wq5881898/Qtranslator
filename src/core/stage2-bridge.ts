@@ -1,4 +1,4 @@
-export const STAGE2_NATIVE_HOST = 'com.wq5881898.translator.stage2';
+export const STAGE2_NATIVE_HOST = 'com.wq5881898.qtranslator';
 export const STAGE2_PROTOCOL_VERSION = '1.0';
 export const STAGE2_MAX_TEXT_LENGTH = 5_000;
 export const STAGE2_VISIBLE_TRANSLATOR_PORT = 'stage2-translator-visible';
@@ -228,7 +228,7 @@ async function handleNativeRequest(
     port.postMessage(
       createStage2BridgeEnvelope(
         'bridge.health.result',
-        { available: true, extension: 'translator', protocolVersion: STAGE2_PROTOCOL_VERSION },
+        { available: true, extension: 'qtranslator', protocolVersion: STAGE2_PROTOCOL_VERSION },
         message.requestId,
       ),
     );

@@ -1,0 +1,61 @@
+<Window x:Class="Qtranslator.Desktop.ChatSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AI 服务配置" Width="780" Height="760" MinWidth="680" MinHeight="560"
+        WindowStartupLocation="CenterOwner" Background="#F7F9F8">
+    <Window.Resources>
+        <Style TargetType="TextBox"><Setter Property="Padding" Value="8"/><Setter Property="Margin" Value="0,4,0,12"/></Style>
+        <Style TargetType="ComboBox"><Setter Property="Padding" Value="6"/><Setter Property="Margin" Value="0,4,0,12"/></Style>
+        <Style TargetType="Button"><Setter Property="Padding" Value="14,8"/><Setter Property="Margin" Value="0,4,8,4"/></Style>
+    </Window.Resources>
+    <Grid Margin="20" Background="#F7F9F8">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel Margin="0,0,0,16">
+            <TextBlock Text="配置你自己的 AI 服务" FontSize="23" FontWeight="SemiBold"/>
+            <TextBlock Text="示例档案可修改；仅调用选中的 URL 与模型。Key 在本机以 Windows 用户加密保存。" TextWrapping="Wrap" Foreground="#52635A" Margin="0,8,0,0"/>
+        </StackPanel>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="165"/><ColumnDefinition Width="20"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <DockPanel>
+                <WrapPanel DockPanel.Dock="Bottom"><Button Content="新增" Click="Add_Click"/><Button Content="删除" Click="Delete_Click"/></WrapPanel>
+                <ListBox x:Name="ProfilesList" DisplayMemberPath="Name" SelectionChanged="ProfilesList_SelectionChanged"/>
+            </DockPanel>
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Text="Provider / 服务名称"/><TextBox x:Name="ProviderName"/>
+                    <TextBlock Text="Base URL（或完整请求端点）"/><TextBox x:Name="BaseUrl"/>
+                    <TextBlock Text="API 格式"/>
+                    <ComboBox x:Name="ApiFormat" SelectedIndex="0">
+                        <ComboBoxItem Content="openai-completions · /chat/completions"/>
+                        <ComboBoxItem Content="openai-responses · /responses"/>
+                        <ComboBoxItem Content="anthropic-messages · /v1/messages"/>
+                    </ComboBox>
+                    <TextBlock Text="模型（填完整模型 ID，可自由修改）"/><TextBox x:Name="Model"/>
+                    <TextBlock Text="API Key"/><PasswordBox x:Name="ApiKey" Padding="8" Margin="0,4,0,12"/>
+                    <TextBlock Text="鉴权方式"/>
+                    <ComboBox x:Name="Authentication" SelectedIndex="0">
+                        <ComboBoxItem Content="Authorization: Bearer KEY"/>
+                        <ComboBoxItem Content="x-api-key: KEY"/>
+                        <ComboBoxItem Content="自定义 authHeader"/>
+                    </ComboBox>
+                    <TextBlock Text="自定义 header 名称 / Key 前缀（仅自定义鉴权时使用，前缀保留空格）" TextWrapping="Wrap"/>
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <TextBox x:Name="AuthHeader" Margin="0,4,8,12"/><TextBox x:Name="AuthPrefix" Grid.Column="1"/>
+                    </Grid>
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,8,0"><TextBlock Text="上下文 Token 上限"/><TextBox x:Name="ContextTokens"/></StackPanel>
+                        <StackPanel Grid.Column="1"><TextBlock Text="最大输出 Token"/><TextBox x:Name="MaxTokens"/></StackPanel>
+                    </Grid>
+                    <TextBlock Text="留空使用服务默认值（Anthropic 必须填写输出上限）。上下文使用保守估算，超过上限会提示，不自动裁剪。" TextWrapping="Wrap" Foreground="#52635A" Margin="0,0,0,12"/>
+                    <TextBlock Text="系统提示词 / System prompt（可选）"/>
+                    <TextBox x:Name="SystemPrompt" AcceptsReturn="True" TextWrapping="Wrap" Height="100" VerticalScrollBarVisibility="Auto"/>
+                    <CheckBox x:Name="Stream" Content="流式显示响应（不支持流式的服务可关闭）" Margin="0,0,0,10"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+        <TextBlock Grid.Row="2" x:Name="ErrorText" TextWrapping="Wrap" Foreground="#B42318" Margin="0,12,0,0"/>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="取消" IsCancel="True"/><Button Content="保存配置" IsDefault="True" Click="Save_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

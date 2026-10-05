@@ -109,7 +109,7 @@ export function createChromeTranslationProvider(
 
       if (error instanceof DOMException && error.name === "NotAllowedError") {
         throw new Error(
-          "Chrome needs a browser click to prepare the local language pack. Open the Translator side panel, click Run local translation check once, then retry in Windows.",
+          "Chrome needs a browser click to prepare the local language pack. Open the Qtranslator side panel, click Run local translation check once, then retry in Windows.",
         );
       }
 

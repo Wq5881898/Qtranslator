@@ -55,7 +55,7 @@ export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(() => {
     browser.contextMenus.create({
       id: 'translator-open-side-panel',
-      title: 'Translate selection',
+      title: 'Qtranslator: Translate selection',
       contexts: ['selection'],
     });
 

@@ -1,29 +1,12 @@
-Translator 安装后操作
-=====================
+Qtranslator 安装后操作
 
-Windows 桌面程序、OCR、Bridge Host 和浏览器插件已经安装到固定目录。
-Bridge 注册由安装程序和桌面程序自动完成，不需要运行 PowerShell。
+1. 启动 Qtranslator.exe。可以保留旧 Translator 运行，无需卸载、停止或覆盖旧程序。
+2. 如需本地翻译，在 Chrome 的 chrome://extensions 开启开发者模式，加载：
+   %LOCALAPPDATA%\Programs\Qtranslator\extension
+   此插件名称为 Qtranslator，与旧 Translator ID 不同。保留旧插件及其加载目录。
+3. Qtranslator 翻译截图快捷键为 Ctrl+Alt+X；AI 截图为 Ctrl+Shift+D。
+   Ctrl+Shift+X 留给旧 Translator。
+4. 在 AI 对话 → API 配置填入你的服务 URL、模型和 Key，然后发送问题。
 
-浏览器插件仍需在 Chrome 中加载一次：
-
-1. 打开 chrome://extensions
-2. 开启右上角“开发者模式”
-3. 点击“加载已解压的扩展程序”
-4. 选择下面的文件夹：
-
-   %LOCALAPPDATA%\Programs\Translator\extension
-
-加载后不要移动或删除该文件夹。以后升级请直接运行新版 Translator-Setup.exe。
-
-如果此前已经加载过旧版插件，升级安装后还需要执行下面任一操作，使 Chrome 放弃内存中的旧代码：
-
-- 打开 chrome://extensions，在 Translator 卡片点击一次“重新加载”；或
-- 完全退出并重新启动 Chrome。
-
-不需要删除插件，也不需要重新选择文件夹。完成重载后，扩展详情中的版本应为 1.1.6。
-
-收藏数据保存在：
-
-   %LOCALAPPDATA%\Translator\favorites.json
-
-卸载程序默认保留收藏数据，避免误删学习记录。
+新程序配置、收藏和日志位于 %LOCALAPPDATA%\Qtranslator。
+安装与卸载不修改旧 Translator 的目录、注册项或收藏。

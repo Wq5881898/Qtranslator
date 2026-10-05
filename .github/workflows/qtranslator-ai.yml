@@ -27,21 +27,23 @@ jobs:
           npm run check
           npm run build
           npm run verify:release
+          node scripts/verify-isolation.mjs
       - name: Validate desktop and AI protocols
         run: |
-          dotnet build desktop/Translator.Stage2.slnx --configuration Release --configfile NuGet.Config
-          dotnet run --project desktop/Translator.TechnicalValidation --configuration Release --no-build
-          dotnet run --project desktop/Translator.TechnicalValidation --configuration Release --no-build -- --chat
-          dotnet run --project desktop/Translator.TechnicalValidation --configuration Release --no-build -- --chat-render artifacts/ai-preview
+          dotnet build desktop/Qtranslator.slnx --configuration Release --configfile NuGet.Config
+          dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release --no-build
+          dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release --no-build -- --chat
+          dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release --no-build -- --chat-render artifacts/ai-preview
       - name: Publish portable Windows package
         run: |
-          dotnet publish desktop/Translator.Desktop --configuration Release --runtime win-x64 --self-contained true --output staging/desktop --configfile NuGet.Config
-          dotnet publish desktop/Translator.BridgeHost --configuration Release --runtime win-x64 --self-contained true --output staging/bridge-host --configfile NuGet.Config
+          dotnet publish desktop/Qtranslator.Desktop --configuration Release --runtime win-x64 --self-contained true --output staging/desktop --configfile NuGet.Config
+          dotnet publish desktop/Qtranslator.BridgeHost --configuration Release --runtime win-x64 --self-contained true --output staging/bridge-host --configfile NuGet.Config
           Copy-Item .output/chrome-mv3 staging/extension -Recurse
           Copy-Item docs/QTRANSLATOR_AI_ZH.md staging/README_ZH.md
+          Copy-Item docs/QTRANSLATOR_AI_TEST_REPORT_ZH.md staging/TEST_REPORT_ZH.md
       - uses: actions/upload-artifact@v4
         with:
-          name: Qtranslator-v1.2.0-win-x64
+          name: Qtranslator-v1.2.1-win-x64
           path: staging
       - uses: actions/upload-artifact@v4
         with:

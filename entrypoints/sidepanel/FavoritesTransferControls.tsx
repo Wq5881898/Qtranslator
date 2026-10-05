@@ -36,7 +36,7 @@ export function FavoritesTransferControls({ favorites, onImport, onStatus }: Pro
     const link = document.createElement('a');
     const date = new Date().toISOString().slice(0, 10);
     link.href = url;
-    link.download = `translator-favorites-${date}.csv`;
+    link.download = `qtranslator-favorites-${date}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     reportStatus(`Exported ${favorites.length} favorites to CSV`);

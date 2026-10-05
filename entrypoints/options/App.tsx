@@ -17,6 +17,7 @@ const EMPTY_SETTINGS: TranslatorSettings = {
 
 export function App() {
   const [settings, setSettings] = useState(EMPTY_SETTINGS);
+  const [automaticCapture, setAutomaticCapture] = useState(false);
   const [clearArmed, setClearArmed] = useState(false);
   const [status, setStatus] = useState(
     'US English pronunciation is active. Chrome local translation is the default.',
@@ -26,11 +27,12 @@ export function App() {
     let active = true;
 
     void browser.storage.local
-      .get(TRANSLATOR_SETTINGS_KEY)
+      .get([TRANSLATOR_SETTINGS_KEY, 'qtranslatorAutomaticWebCapture'])
       .then((stored) => {
         if (!active) {
           return;
         }
+        setAutomaticCapture(stored.qtranslatorAutomaticWebCapture === true);
 
         const saved = stored[TRANSLATOR_SETTINGS_KEY] as
           | Partial<TranslatorSettings>
@@ -69,6 +71,7 @@ export function App() {
     try {
       await browser.storage.local.set({
         [TRANSLATOR_SETTINGS_KEY]: normalized,
+        qtranslatorAutomaticWebCapture: automaticCapture,
       });
       setSettings(normalized);
       setStatus(
@@ -92,8 +95,10 @@ export function App() {
         TRANSLATOR_SETTINGS_KEY,
         FAVORITES_STORAGE_KEY,
         FAVORITES_SYNC_METADATA_KEY,
+        'qtranslatorAutomaticWebCapture',
       ]);
       setSettings(EMPTY_SETTINGS);
+      setAutomaticCapture(false);
       setClearArmed(false);
       setStatus('Local settings and favorites were cleared.');
     } catch {
@@ -104,12 +109,16 @@ export function App() {
   return (
     <main>
       <p className="eyebrow">Version {browser.runtime.getManifest().version}</p>
-      <h1>Translator settings</h1>
+      <h1>Qtranslator settings</h1>
       <p className="intro">
         Pronunciation, settings, and favorites stay in this browser. Translation runs locally in Chrome by default.
       </p>
 
       <form onSubmit={saveSettings}>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={automaticCapture} onChange={event => setAutomaticCapture(event.target.checked)} />
+          自动捕获网页划词（默认关闭，可与旧 Translator 插件并存）
+        </label>
         <label>
           English pronunciation
           <select
@@ -156,7 +165,7 @@ export function App() {
           />
         </label>
         <p className="notice">
-          Azure is optional. Its key is saved only in Chrome extension storage, but it is not encrypted by Translator. Leave it blank and keep fallback off if you do not need it.
+          Azure is optional. Its key is saved only in Chrome extension storage, but it is not encrypted by Qtranslator. Leave it blank and keep fallback off if you do not need it.
         </p>
 
         <label>
@@ -181,7 +190,7 @@ export function App() {
       <section className="privacy-card">
         <h2>Privacy and local data</h2>
         <p>
-          Translator does not upload favorites, settings, browsing history, complete webpages, screenshots, or audio. Azure receives selected English text only when you explicitly enable it and Chrome local translation fails.
+          Qtranslator does not upload favorites, settings, browsing history, complete webpages, screenshots, or audio. Azure receives selected English text only when you explicitly enable it and Chrome local translation fails.
         </p>
         <button
           className={clearArmed ? 'danger armed' : 'danger'}

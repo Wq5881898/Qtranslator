@@ -50,7 +50,7 @@ let extensionId = '';
 for (const value of keyHash.subarray(0, 16)) {
   extensionId += alphabet[value >> 4] + alphabet[value & 15];
 }
-if (extensionId !== 'djbkcmlpogpnafgifiocehmkkghnhjjb') {
+if (extensionId !== 'kjgoachjhbfkijaopcmallakpfnalkdo') {
   throw new Error(`Unexpected Stage 2 extension ID: ${extensionId}`);
 }
 

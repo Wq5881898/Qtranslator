@@ -1,14 +1,6 @@
-Translator Stage 2 Batch E 安装/更新
+Qtranslator 独立桥接
 
-本批浏览器插件版本：1.1.1
-
-1. 打开 chrome://extensions
-2. 删除或停用旧的 Translator 测试插件。
-3. 开启“开发者模式”，点击“加载已解压的扩展程序”。
-4. 选择测试包根目录下的 extension 文件夹。
-5. 启动测试包 desktop 文件夹中的 Translator.Desktop.exe。
-   桌面程序会自动注册同一测试包中的 Bridge Host。
-6. Chrome 扩展详情页应显示版本 1.1.1。
-
-共享收藏需要第 4 步和第 5 步同时完成。仅更新桌面 EXE 或仅更新浏览器插件
-都不能建立共享收藏连接。
+完整解压便携包，运行 desktop/Qtranslator.exe，程序将注册独立的 com.wq5881898.qtranslator 主机。
+在 Chrome 加载本包 extension 中的 Qtranslator 插件。
+不要删除、停用或替换旧 Translator 插件。旧程序与新程序使用不同注册项、插件 ID 和命名管道。
+截图翻译 Ctrl+Alt+X；AI 截图 Ctrl+Shift+D。旧 Translator 的 Ctrl+Shift+X 保留给旧程序。

@@ -1,15 +1,29 @@
-# Qtranslator 1.2.0：翻译与 AI 对话
+# Qtranslator 1.2.1：翻译与 AI 对话
 
-本次升级基于 Translator v1.1.8，保留桌面翻译、收藏、发音及 Chrome 本地翻译桥接。Windows 主窗口分为“翻译”和“AI 对话”两个标签页。浏览器扩展继续作为原翻译服务的伴侣组件。
+Qtranslator 是基于 Translator v1.1.8 代码开发的独立程序，可以与旧 Translator 并行使用。Windows 主窗口分为“翻译”和“AI 对话”两个标签页；新程序、浏览器扩展、配置和收藏均独立，不读取或迁移旧程序的数据。
 
 ## 运行与使用
 
-1. 完整解压 `Qtranslator-v1.2.0-win-x64.zip`，保留 desktop、bridge-host、extension 三个文件夹的相对位置。
-2. 退出旧 Translator，避免它占用截图快捷键；运行 `desktop/Translator.Desktop.exe`。无需安装 .NET。
-3. 原翻译功能需要 Chrome 打开并加载 `extension` 中的伴侣扩展；已有同 ID 插件时更新其加载目录并重新加载。AI 对话独立运行，不依赖 Chrome。
+1. 完整解压 `Qtranslator-v1.2.1-win-x64.zip`，保留 desktop、bridge-host、extension 三个文件夹的相对位置。
+2. 运行 `desktop/Qtranslator.exe`。无需安装 .NET，无需退出或卸载旧 Translator。
+3. Qtranslator 的翻译标签页需要 Chrome 打开并加载本包 `extension` 中名为 Qtranslator 的独立扩展。保留旧 Translator 扩展及其加载目录，不用替换。新插件默认关闭自动网页划词捕获，避免抢占旧插件的侧栏；可通过 Qtranslator 设置主动开启。AI 对话独立运行，不依赖 Chrome。
 4. 打开“AI 对话 → API 配置”，选择或新增服务档案，输入 API Key，核对 URL、API 格式和模型，然后保存。
 5. 输入消息后点击发送或按 Enter。Shift+Enter 换行；停止取消当前请求；重试重新发送失败的一轮；新建对话清空当前消息。
-6. `Ctrl+Shift+X` 保留原截图翻译（若已修改快捷键则沿用原设置）。`Ctrl+Shift+D` 从任何应用截图，识别中英文，切换到 AI 标签页并追加到输入框。截图文字不会自动发送，可编辑后确认。快捷键被其他应用占用时可使用“截图输入”按钮。
+6. Qtranslator 的截图翻译默认为 `Ctrl+Alt+X`，AI 截图默认为 `Ctrl+Shift+D`。旧 Translator 的 `Ctrl+Shift+X` 留给旧程序，Qtranslator 不允许将该组合配置为翻译快捷键。AI 截图识别中英文并追加到草稿，不自动发送。若其他应用已占用快捷键，Qtranslator 只提示注册失败，不会释放或改变其他程序的快捷键，可用截图按钮。
+
+## 与旧程序隔离
+
+| 项目 | Qtranslator |
+| --- | --- |
+| 桌面程序 | `Qtranslator.exe` |
+| 桥接程序 | `Qtranslator.BridgeHost.exe` |
+| 配置、收藏和日志 | `%LOCALAPPDATA%/Qtranslator/` |
+| 默认安装目录 | `%LOCALAPPDATA%/Programs/Qtranslator/` |
+| Native Messaging 主机 | `com.wq5881898.qtranslator` |
+| 默认命名管道 | `wq5881898.qtranslator` |
+| 浏览器扩展 ID | `kjgoachjhbfkijaopcmallakpfnalkdo` |
+
+安装器使用独立 AppId 和卸载项；安装、更新、卸载只操作 Qtranslator 的程序和注册项。旧 Translator 的扩展 ID、桥接注册项、目录及收藏不被替换。之前的 1.2.0 测试包未完成隔离，已撤回；请使用 1.2.1 或更新版本。
 
 ## 服务配置
 
@@ -40,9 +54,9 @@ sub2api 的模型可改为 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-6-astra` 或�
 ## 开发验证
 
 ```powershell
-dotnet build desktop/Translator.Stage2.slnx --configuration Release
-dotnet run --project desktop/Translator.TechnicalValidation --configuration Release -- --chat
-dotnet run --project desktop/Translator.TechnicalValidation --configuration Release -- --chat-render artifacts/ai-preview
+dotnet build desktop/Qtranslator.slnx --configuration Release
+dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release -- --chat
+dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release -- --chat-render artifacts/ai-preview
 ```
 
 协议实现参考 [OpenAI Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)、[OpenAI Responses](https://developers.openai.com/api/docs/guides/migrate-to-responses)、[Anthropic 流式消息](https://platform.claude.com/docs/en/build-with-claude/streaming) 和 [MiniMax Anthropic 接口](https://platform.minimax.cn/docs/api-reference/text-anthropic-api)。

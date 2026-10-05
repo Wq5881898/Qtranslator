@@ -238,7 +238,7 @@ export function App() {
         }
 
         const message =
-          'Favorites could not be loaded. Check browser storage and reopen Translator.';
+          'Favorites could not be loaded. Check browser storage and reopen Qtranslator.';
         setStatus(message);
         setFoundationResult(message);
         setOutputIsError(true);
@@ -467,7 +467,7 @@ export function App() {
   return (
     <main className="panel">
       <p className="eyebrow">Version {browser.runtime.getManifest().version}</p>
-      <h1>Translator</h1>
+      <h1>Qtranslator</h1>
       <p className="intro">
         Translate locally, then keep useful words and sentences in this browser.
       </p>

@@ -1,9 +1,0 @@
-{
-  "name": "com.wq5881898.translator.stage2",
-  "description": "Translator Stage 2 browser bridge",
-  "path": "__ABSOLUTE_HOST_EXE_PATH__",
-  "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://djbkcmlpogpnafgifiocehmkkghnhjjb/"
-  ]
-}

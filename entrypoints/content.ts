@@ -4,10 +4,22 @@ import { normalizeSelection } from '../src/core/selection';
 export default defineContentScript({
   matches: ['<all_urls>'],
   main() {
+    // The companion extension must not compete with an existing Translator panel.
+    let automaticCapture = false;
+    void browser.storage.local.get('qtranslatorAutomaticWebCapture').then((stored) => {
+      automaticCapture = stored.qtranslatorAutomaticWebCapture === true;
+    }).catch(() => undefined);
+    browser.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.qtranslatorAutomaticWebCapture) {
+        automaticCapture = changes.qtranslatorAutomaticWebCapture.newValue === true;
+        previousSelection = '';
+      }
+    });
     let previousSelection = '';
     let captureTimer: number | undefined;
 
     function sendCurrentSelection() {
+      if (!automaticCapture) return;
       const text = normalizeSelection(window.getSelection()?.toString() ?? '');
 
       if (!text) {

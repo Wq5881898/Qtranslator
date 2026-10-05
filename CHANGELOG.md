@@ -1,5 +1,13 @@
 # Changelog
 
+## Qtranslator 1.2.1 — independent application
+
+- Rename Windows projects, assemblies, namespaces and executable to Qtranslator.
+- Isolate configuration, favorites, logs, native host registration, named pipe, installer AppId, and extension ID from the legacy Translator product.
+- Use Ctrl+Alt+X for new screenshot translation, reserve Ctrl+Shift+X for legacy Translator, and retain Ctrl+Shift+D for AI drafts.
+- Disable automatic webpage selection capture by default in the independent companion extension; it can be enabled explicitly.
+- Retire legacy installer workflows and replace the unisolated 1.2.0 test package.
+
 ## Qtranslator desktop 1.2.0
 
 - Upgrade the Windows desktop base to Translator v1.1.8 and add Translation / AI Chat tabs.

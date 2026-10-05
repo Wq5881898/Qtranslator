@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="Translator.Core/Translator.Core.csproj" />
-  <Project Path="Translator.Desktop/Translator.Desktop.csproj" />
-  <Project Path="Translator.BridgeHost/Translator.BridgeHost.csproj" />
-  <Project Path="Translator.TechnicalValidation/Translator.TechnicalValidation.csproj" />
-</Solution>
