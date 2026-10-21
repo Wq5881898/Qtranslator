@@ -17,6 +17,11 @@ public partial class MainWindow : Window
     private bool _busy;
     private Process? _speechProcess;
     private DateTimeOffset _lastBridgeRegistrationAttempt = DateTimeOffset.MinValue;
+    private readonly CancellationTokenSource _bridgeLifetime = new();
+    private readonly System.Windows.Threading.DispatcherTimer _bridgeMonitor = new() { Interval = TimeSpan.FromSeconds(15) };
+    private Task<ProviderHealth>? _bridgeCheck;
+    private string? _registrationError;
+    private string? _lastLoggedBridgeState;
 
     public MainWindow()
     {
@@ -29,12 +34,15 @@ public partial class MainWindow : Window
         _hotKey.Pressed += OnHotKeyPressed;
         _chatHotKey.Pressed += OnChatHotKeyPressed;
         ChatPanel.CaptureRequested += OnChatHotKeyPressed;
+        _bridgeMonitor.Tick += async (_, _) => { if (!_busy) await CheckBridgeAsync(); };
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         EnsureBridgeRegistration(force: true);
         await RefreshFavoriteCountAsync();
+        await CheckBridgeAsync(retry: true);
+        if (!_bridgeLifetime.IsCancellationRequested) _bridgeMonitor.Start();
     }
 
     private async void OnActivated(object? sender, EventArgs e)
@@ -55,13 +63,70 @@ public partial class MainWindow : Window
         try
         {
             BridgeRegistrationService.EnsureRegistered();
+            _registrationError = null;
         }
         catch (Exception exception)
         {
-            StatusText.Text =
-                $"Chrome bridge registration failed: {FriendlyError(exception)} " +
-                "Favorites remain safe locally. Reinstall Qtranslator or retry after checking Windows security.";
+            _registrationError = FriendlyError(exception);
+            BridgeConnectionText.Text = $"浏览器连接：本机注册失败。{_registrationError}";
+            DesktopErrorLog.Write("Bridge registration failed", exception);
         }
+    }
+
+    private async Task<ProviderHealth> CheckBridgeAsync(bool retry = false)
+    {
+        if (_bridgeCheck is not null) return await _bridgeCheck;
+        _bridgeCheck = CheckBridgeCoreAsync(retry);
+        try { return await _bridgeCheck; }
+        finally { _bridgeCheck = null; }
+    }
+
+    private async Task<ProviderHealth> CheckBridgeCoreAsync(bool retry)
+    {
+        BridgeCheckButton.IsEnabled = false;
+        BridgeConnectionText.Text = "浏览器连接：正在检查…";
+        try
+        {
+            var health = await _translation.CheckHealthAsync(_bridgeLifetime.Token);
+            if (retry && !health.IsAvailable)
+            {
+                await Task.Delay(2200, _bridgeLifetime.Token);
+                health = await _translation.CheckHealthAsync(_bridgeLifetime.Token);
+            }
+            var message = health.IsAvailable ? "浏览器连接：已连接" :
+                _registrationError is not null ? $"浏览器连接：注册失败。{_registrationError}" :
+                "浏览器连接：未连通。请在插件设置中检查错误；若找不到主机，请从资源管理器直接启动本程序。";
+            BridgeConnectionText.Text = message;
+            BridgeConnectionText.ToolTip = health.Message;
+            if (_lastLoggedBridgeState != message)
+            {
+                _lastLoggedBridgeState = message;
+                DesktopErrorLog.WriteInfo("Browser connection", message);
+            }
+            return health;
+        }
+        catch (OperationCanceledException) when (_bridgeLifetime.IsCancellationRequested)
+        { return new ProviderHealth(false, "Window closed."); }
+        finally { if (!_bridgeLifetime.IsCancellationRequested) BridgeCheckButton.IsEnabled = !_busy; }
+    }
+
+    private async void BridgeCheckButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        EnsureBridgeRegistration(force: true);
+        await CheckBridgeAsync(retry: true);
+    }
+
+    private void ExtensionFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var folder = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, "..", "extension"));
+            if (!System.IO.Directory.Exists(folder)) throw new System.IO.DirectoryNotFoundException("发布包中缺少 extension 文件夹。");
+            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+            StatusText.Text = "已打开配套插件文件夹。请在 Chrome 扩展程序页面加载此文件夹，然后点击检查连接。";
+        }
+        catch (Exception exception) { StatusText.Text = FriendlyError(exception); }
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -121,6 +186,8 @@ public partial class MainWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _bridgeMonitor.Stop();
+        _bridgeLifetime.Cancel();
         _hotKey.Pressed -= OnHotKeyPressed;
         _hotKey.Dispose();
         _chatHotKey.Pressed -= OnChatHotKeyPressed;
@@ -230,12 +297,11 @@ public partial class MainWindow : Window
             }
 
             StatusText.Text = "Checking the Chrome translation bridge...";
-            var health = await _translation.CheckHealthAsync(CancellationToken.None);
+            var health = await CheckBridgeAsync();
             if (!health.IsAvailable)
             {
                 StatusText.Text =
-                    $"Translation could not start: {health.Message} " +
-                    "Keep Chrome open, enable the Qtranslator extension, then retry.";
+                    $"Translation could not start: {health.Message}";
                 return;
             }
 
@@ -479,6 +545,7 @@ public partial class MainWindow : Window
         FavoriteButton.IsEnabled = !busy && _currentTranslation is not null;
         SpeakButton.IsEnabled = !busy && _currentTranslation is not null;
         FavoritesButton.IsEnabled = !busy;
+        BridgeCheckButton.IsEnabled = !busy && _bridgeCheck is null;
         if (status is not null)
         {
             StatusText.Text = status;

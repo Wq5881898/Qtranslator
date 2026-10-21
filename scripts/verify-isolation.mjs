@@ -8,7 +8,7 @@ const id = [...createHash('sha256').update(Buffer.from(manifest.key, 'base64')).
 if (id === 'djbkcmlpogpnafgifiocehmkkghnhjjb' || manifest.name !== 'Qtranslator') throw new Error('Extension is not isolated.');
 const desktop = 'desktop/Qtranslator.Desktop/';
 const registration = await read(desktop + 'BridgeRegistrationService.cs');
-const client = await read('src/core/stage2-bridge.ts');
+const client = await read('src/core/bridge-protocol.ts');
 const protocol = await read('desktop/Qtranslator.Core/BridgeProtocol.cs');
 const favorites = await read('desktop/Qtranslator.Core/Favorites.cs');
 const shortcuts = await read(desktop + 'ShortcutSettings.cs');

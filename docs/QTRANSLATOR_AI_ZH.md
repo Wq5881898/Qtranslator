@@ -1,15 +1,34 @@
-# Qtranslator 1.2.1：翻译与 AI 对话
+# Qtranslator 1.2.2：翻译与 AI 对话
 
 Qtranslator 是基于 Translator v1.1.8 代码开发的独立程序，可以与旧 Translator 并行使用。Windows 主窗口分为“翻译”和“AI 对话”两个标签页；新程序、浏览器扩展、配置和收藏均独立，不读取或迁移旧程序的数据。
 
 ## 运行与使用
 
-1. 完整解压 `Qtranslator-v1.2.1-win-x64.zip`，保留 desktop、bridge-host、extension 三个文件夹的相对位置。
-2. 运行 `desktop/Qtranslator.exe`。无需安装 .NET，无需退出或卸载旧 Translator。
+1. 完整解压 `Qtranslator-v1.2.2-win-x64.zip`，保留 desktop、bridge-host、extension 三个文件夹的相对位置。
+2. 在 Windows 文件资源管理器中直接双击 `desktop/Qtranslator.exe`。无需安装 .NET，无需退出或卸载旧 Translator。
 3. Qtranslator 的翻译标签页需要 Chrome 打开并加载本包 `extension` 中名为 Qtranslator 的独立扩展。保留旧 Translator 扩展及其加载目录，不用替换。新插件默认关闭自动网页划词捕获，避免抢占旧插件的侧栏；可通过 Qtranslator 设置主动开启。AI 对话独立运行，不依赖 Chrome。
 4. 打开“AI 对话 → API 配置”，选择或新增服务档案，输入 API Key，核对 URL、API 格式和模型，然后保存。
 5. 输入消息后点击发送或按 Enter。Shift+Enter 换行；停止取消当前请求；重试重新发送失败的一轮；新建对话清空当前消息。
 6. Qtranslator 的截图翻译默认为 `Ctrl+Alt+X`，AI 截图默认为 `Ctrl+Shift+D`。旧 Translator 的 `Ctrl+Shift+X` 留给旧程序，Qtranslator 不允许将该组合配置为翻译快捷键。AI 截图识别中英文并追加到草稿，不自动发送。若其他应用已占用快捷键，Qtranslator 只提示注册失败，不会释放或改变其他程序的快捷键，可用截图按钮。
+
+## 插件连接与启动排查（1.2.2）
+
+桌面端启动时会检查完整连接，空闲时每 15 秒检查一次。点击“检查连接”可重新注册并检查；点击“插件文件夹”可打开本包配套扩展目录。插件设置的“桌面连接”区域显示连接状态、最近检查时间、Chrome 原始错误，并提供“检查并重连”。插件断线后会自动重试，间隔从 2 秒逐步增加到最多 10 秒。
+
+桌面端显示“已连接”需要 Chrome 中的 Qtranslator 插件实际回应，不能仅靠注册表存在或桥接进程存在来判断。插件设置中的连接成功只表示浏览器与本机桥接连通；翻译语言模型是否就绪，仍需发送一次翻译确认。
+
+如果错误为 `Specified native messaging host not found`：
+
+1. 从文件资源管理器直接双击本包的 `desktop/Qtranslator.exe`。程序会检查桥接文件，并注册当前用户的 32 位和 64 位 Chrome 主机项。
+2. 确认 Chrome 加载的是 Qtranslator 扩展，ID 为 `kjgoachjhbfkijaopcmallakpfnalkdo`。保留旧 Translator 的扩展和注册项。
+3. 在 Qtranslator 插件设置点击“检查并重连”，再回到桌面点击“检查连接”。如果刚替换了扩展文件，先在 Chrome 扩展管理页重新加载 Qtranslator。
+4. 仍未连通时，查看插件的“Chrome 错误详情”和 `%LOCALAPPDATA%/Qtranslator/logs/desktop.log`，根据具体错误检查文件位置或浏览器策略。不要仅凭历史错误记录反复重启 Chrome；以新的连接检查及实际翻译结果为准。
+
+本机排查曾观察到：开发工具启动时注册检查正常，但 Chrome 找不到主机；从资源管理器启动后连接和翻译恢复。证据说明启动环境会影响结果，尚未确认具体的底层隔离机制；因此不能保证仅重启 Chrome 就能修复。
+
+升级前先复制当前 Qtranslator 对话中需要保留的内容；关闭旧版 Qtranslator 会丢失本次内存对话。新旧 Qtranslator 版本共用同一套产品配置、快捷键和桥接注册，请避免长期同时运行。旧产品 Translator 则保持独立。
+
+回退：关闭新版本 Qtranslator，从资源管理器打开保留的旧版 Qtranslator.exe，让其恢复自身桥接路径；恢复对应旧版扩展文件并重新加载。不会改变旧产品 Translator。
 
 ## 与旧程序隔离
 
@@ -55,6 +74,7 @@ sub2api 的模型可改为 `gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-6-astra` 或�
 
 ```powershell
 dotnet build desktop/Qtranslator.slnx --configuration Release
+dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release -- --bridge desktop/Qtranslator.BridgeHost/bin/Release/net10.0-windows10.0.19041.0/Qtranslator.BridgeHost.exe
 dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release -- --chat
 dotnet run --project desktop/Qtranslator.TechnicalValidation --configuration Release -- --chat-render artifacts/ai-preview
 ```

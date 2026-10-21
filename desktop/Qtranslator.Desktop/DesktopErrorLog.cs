@@ -14,15 +14,20 @@ internal static class DesktopErrorLog
         "desktop.log");
 
     public static void Write(string context, Exception exception)
+        => WriteInfo(context, exception.ToString());
+
+    public static void WriteInfo(string context, string detail)
     {
         try
         {
             lock (Gate)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
+                if (File.Exists(LogPath) && new FileInfo(LogPath).Length > 1_048_576)
+                    File.Move(LogPath, LogPath + ".previous", overwrite: true);
                 var entry = new StringBuilder()
                     .AppendLine($"[{DateTimeOffset.Now:O}] {context}")
-                    .AppendLine(exception.ToString())
+                    .AppendLine(detail)
                     .AppendLine();
                 File.AppendAllText(LogPath, entry.ToString(), Encoding.UTF8);
             }

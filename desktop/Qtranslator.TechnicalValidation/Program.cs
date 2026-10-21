@@ -11,6 +11,9 @@ using System.Diagnostics;
 using Qtranslator.Core;
 using Qtranslator.Desktop;
 
+if (args is ["--bridge", var hostPath])
+    return await BridgeValidation.RunAsync(Path.GetFullPath(hostPath));
+
 if (args is ["--chat"])
     return await ChatValidation.RunAsync();
 

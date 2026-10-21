@@ -1,5 +1,5 @@
 #define MyAppName "Qtranslator"
-#define MyAppVersion "1.2.1"
+#define MyAppVersion "1.2.2"
 #define MyAppPublisher "Wq5881898"
 
 [Setup]
@@ -11,7 +11,7 @@ DefaultDirName={%LOCALAPPDATA}\Programs\Qtranslator
 DefaultGroupName=Qtranslator
 DisableProgramGroupPage=yes
 OutputDir=..\installer-output
-OutputBaseFilename=Qtranslator-Setup-v1.2.1
+OutputBaseFilename=Qtranslator-Setup-v1.2.2
 Compression=lzma2/max
 SolidCompression=yes
 PrivilegesRequired=lowest

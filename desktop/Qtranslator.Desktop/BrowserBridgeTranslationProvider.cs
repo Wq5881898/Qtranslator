@@ -8,7 +8,7 @@ namespace Qtranslator.Desktop;
 public sealed class BrowserBridgeTranslationProvider : ITranslationProvider
 {
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(4);
-    private static readonly TimeSpan TranslationTimeout = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan TranslationTimeout = TimeSpan.FromSeconds(85);
 
     public string Id => "chrome-local-bridge";
 
@@ -17,9 +17,11 @@ public sealed class BrowserBridgeTranslationProvider : ITranslationProvider
         try
         {
             var response = await SendAsync("bridge.health", new { }, ConnectTimeout, cancellationToken);
-            return response.MessageType == "bridge.health.result"
+            return response.MessageType == "bridge.health.result" &&
+                response.Payload.TryGetProperty("available", out var available) && available.ValueKind == JsonValueKind.True &&
+                response.Payload.TryGetProperty("extension", out var extension) && extension.GetString() == "qtranslator"
                 ? new ProviderHealth(true, "Chrome bridge is connected.")
-                : new ProviderHealth(false, ReadError(response));
+                : new ProviderHealth(false, "未收到 Qtranslator 插件的有效回应。请加载配套插件后检查连接。");
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -107,8 +109,11 @@ public sealed class BrowserBridgeTranslationProvider : ITranslationProvider
                 Guid.NewGuid().ToString("N"),
                 payload);
             await NativeMessageFraming.WriteAsync(pipe, request, timeoutSource.Token);
-            return await NativeMessageFraming.ReadAsync(pipe, timeoutSource.Token)
+            var response = await NativeMessageFraming.ReadAsync(pipe, timeoutSource.Token)
                 ?? throw new EndOfStreamException("The Chrome bridge closed without a response.");
+            if (response.RequestId != request.RequestId)
+                throw new InvalidDataException("Chrome bridge response did not match the request.");
+            return response;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -134,7 +139,7 @@ public sealed class BrowserBridgeTranslationProvider : ITranslationProvider
     private static string FriendlyBridgeError(Exception exception) => exception switch
     {
         TimeoutException =>
-            "Chrome bridge is not connected. Open Chrome with the Qtranslator extension enabled, then retry.",
+            "未收到 Chrome 插件回应。请保持 Chrome 打开，并启用 Qtranslator 插件；若插件提示主机不存在，请从 Windows 文件资源管理器直接打开 Qtranslator.exe，再检查连接。",
         IOException =>
             "Chrome bridge disconnected. Keep Chrome open and retry.",
         JsonException =>

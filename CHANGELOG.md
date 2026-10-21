@@ -1,5 +1,14 @@
 # Changelog
 
+## Qtranslator 1.2.2 — bridge connection and startup
+
+- Check the full desktop-to-extension connection at startup and periodically; add manual connection checking and a companion-extension folder button.
+- Show native-host connection state, the original Chrome error, and actionable recovery instructions in extension settings; retry disconnected ports with backoff.
+- Confirm native ports with a correlated health response and consume Chrome's disconnect error inside its callback.
+- Route desktop replies by request ID so extension health probes cannot be mistaken for translation responses; survive abandoned desktop connections.
+- Register host manifests atomically and validate both Windows registry views, host paths, and the allowed extension ID.
+- Add isolated native-host integration tests and reconnect regression tests. Preserve the legacy Translator identity and data separation.
+
 ## Qtranslator 1.2.1 — independent application
 
 - Rename Windows projects, assemblies, namespaces and executable to Qtranslator.

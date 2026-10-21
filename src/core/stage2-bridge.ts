@@ -1,57 +1,26 @@
-export const STAGE2_NATIVE_HOST = 'com.wq5881898.qtranslator';
-export const STAGE2_PROTOCOL_VERSION = '1.0';
-export const STAGE2_MAX_TEXT_LENGTH = 5_000;
-export const STAGE2_VISIBLE_TRANSLATOR_PORT = 'stage2-translator-visible';
-export const STAGE2_OFFSCREEN_TRANSLATOR_PORT = 'stage2-translator-offscreen';
+import {
+  createStage2BridgeEnvelope, isStage2BridgeEnvelope,
+  STAGE2_NATIVE_HOST, STAGE2_PROTOCOL_VERSION,
+  STAGE2_VISIBLE_TRANSLATOR_PORT, STAGE2_OFFSCREEN_TRANSLATOR_PORT,
+  type Stage2BridgeEnvelope, type Stage2TranslationPayload,
+} from './bridge-protocol';
+import { NativeBridgeConnection, type NativePort } from './native-connection';
+export * from './bridge-protocol';
 
-export type Stage2BridgeEnvelope<T = unknown> = {
-  protocolVersion: typeof STAGE2_PROTOCOL_VERSION;
-  messageType: string;
-  requestId: string;
-  sentAt: string;
-  payload: T;
-};
-
-export type Stage2TranslationPayload = {
-  text: string;
-  sourceLanguage: 'en';
-  targetLanguage: 'zh-CN';
-};
-
-export function createStage2BridgeEnvelope<T>(
-  messageType: string,
-  payload: T,
-  requestId: string = crypto.randomUUID(),
-): Stage2BridgeEnvelope<T> {
-  return {
-    protocolVersion: STAGE2_PROTOCOL_VERSION,
-    messageType,
-    requestId,
-    sentAt: new Date().toISOString(),
-    payload,
-  };
-}
-
-export function isStage2BridgeEnvelope(value: unknown): value is Stage2BridgeEnvelope {
-  if (typeof value !== 'object' || value === null) return false;
-  const candidate = value as Partial<Stage2BridgeEnvelope>;
-  return (
-    candidate.protocolVersion === STAGE2_PROTOCOL_VERSION &&
-    typeof candidate.messageType === 'string' &&
-    typeof candidate.requestId === 'string' &&
-    typeof candidate.sentAt === 'string' &&
-    typeof candidate.payload === 'object' &&
-    candidate.payload !== null
-  );
+export const BRIDGE_STATUS_KEY = 'qtranslatorBridgeStatus';
+let connection: NativeBridgeConnection | undefined;
+function nativeConnection(): NativeBridgeConnection {
+  return connection ??= new NativeBridgeConnection({
+    connect: () => browser.runtime.connectNative(STAGE2_NATIVE_HOST),
+    lastError: () => browser.runtime.lastError?.message,
+    onRequest: handleNativeRequest,
+    onStatus: status => { void browser.storage.session.set({ [BRIDGE_STATUS_KEY]: status }).catch(() => undefined); },
+  });
 }
 
 export async function checkStage2NativeHost(): Promise<Stage2BridgeEnvelope> {
-  const request = createStage2BridgeEnvelope('bridge.health', {});
-  const response = await browser.runtime.sendNativeMessage(STAGE2_NATIVE_HOST, request);
-  if (!isStage2BridgeEnvelope(response) || response.requestId !== request.requestId) {
-    throw new Error('The Stage 2 native host returned an invalid response.');
-  }
-  return response;
+  await nativeConnection().check();
+  return createStage2BridgeEnvelope('bridge.health.result', { available: true });
 }
 
 type RuntimePort = ReturnType<typeof browser.runtime.connect>;
@@ -68,8 +37,6 @@ const pendingTranslationResponses = new Map<
     timeout: ReturnType<typeof setTimeout>;
   }
 >();
-let nativePort: RuntimePort | undefined;
-let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
 export function selectStage2TranslationPort<T>(
   visiblePort: T | undefined,
@@ -211,7 +178,7 @@ async function requestTranslation(
 }
 
 async function handleNativeRequest(
-  port: RuntimePort,
+  port: NativePort,
   message: unknown,
 ): Promise<void> {
   if (!isStage2BridgeEnvelope(message)) {
@@ -266,19 +233,5 @@ async function handleNativeRequest(
 }
 
 export function startStage2NativeBridge(): void {
-  if (nativePort) return;
-  try {
-    const port = browser.runtime.connectNative(STAGE2_NATIVE_HOST);
-    nativePort = port;
-    port.onMessage.addListener((message: unknown) => {
-      void handleNativeRequest(port, message);
-    });
-    port.onDisconnect.addListener(() => {
-      if (nativePort === port) nativePort = undefined;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(startStage2NativeBridge, 2_000);
-    });
-  } catch {
-    reconnectTimer = setTimeout(startStage2NativeBridge, 2_000);
-  }
+  nativeConnection().start();
 }

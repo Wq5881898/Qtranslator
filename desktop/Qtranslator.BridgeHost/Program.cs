@@ -1,77 +1,97 @@
 using System.IO.Pipes;
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Qtranslator.Core;
 
 var chromeInput = Console.OpenStandardInput();
 var chromeOutput = Console.OpenStandardOutput();
+using var lifetime = new CancellationTokenSource();
+using var outputGate = new SemaphoreSlim(1, 1);
+var pending = new ConcurrentDictionary<string, TaskCompletionSource<BridgeEnvelope>>();
+var reader = ReadChromeAsync();
 
-while (true)
+try
 {
-    using var pipe = new NamedPipeServerStream(
-        BridgeEnvelope.PipeName,
-        PipeDirection.InOut,
-        NamedPipeServerStream.MaxAllowedServerInstances,
-        PipeTransmissionMode.Byte,
-        PipeOptions.Asynchronous);
-    using var waitCancellation = new CancellationTokenSource();
-    var chromeRead = NativeMessageFraming.ReadAsync(chromeInput, CancellationToken.None);
-    var pipeWait = pipe.WaitForConnectionAsync(waitCancellation.Token);
-    var completed = await Task.WhenAny(chromeRead, pipeWait);
-
-    if (completed == chromeRead)
+    while (!lifetime.IsCancellationRequested)
     {
-        waitCancellation.Cancel();
-        var directRequest = await chromeRead;
-        if (directRequest is null)
+        await using var pipe = new NamedPipeServerStream(
+            BridgeEnvelope.PipeName, PipeDirection.InOut,
+            NamedPipeServerStream.MaxAllowedServerInstances,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+        await pipe.WaitForConnectionAsync(lifetime.Token);
+        using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        requestTimeout.CancelAfter(TimeSpan.FromSeconds(90));
+        string? requestId = null;
+        try
         {
-            break;
+            var request = await NativeMessageFraming.ReadAsync(pipe, requestTimeout.Token);
+            if (request is null) continue;
+            requestId = request.RequestId;
+            var completion = new TaskCompletionSource<BridgeEnvelope>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!pending.TryAdd(requestId, completion)) throw new InvalidDataException("Duplicate request ID.");
+            await WriteChromeAsync(request);
+            var response = await completion.Task.WaitAsync(requestTimeout.Token);
+            await NativeMessageFraming.WriteAsync(pipe, response, requestTimeout.Token);
         }
-
-        var directResponse = directRequest.MessageType switch
+        catch (Exception error) when (error is IOException or OperationCanceledException)
         {
-            "bridge.health" => BridgeEnvelope.Create(
-                "bridge.health.result",
-                directRequest.RequestId,
-                new
-                {
-                    available = true,
-                    host = "qtranslator-bridge",
-                    protocolVersion = BridgeEnvelope.CurrentVersion,
-                }),
-            "favorites.read" => BridgeEnvelope.Create(
-                "favorites.result",
-                directRequest.RequestId,
-                new { favorites = await SharedFavoriteStore.LoadAsync() }),
-            "favorites.write" => await WriteFavoritesAsync(directRequest),
-            "favorites.patch" => await PatchFavoritesAsync(directRequest),
-            _ => BridgeEnvelope.Create(
-                "bridge.error",
-                directRequest.RequestId,
-                new
-                {
-                    code = "desktop_not_connected",
-                    message = "Unsupported direct native-host request.",
-                })
-        };
-        await NativeMessageFraming.WriteAsync(chromeOutput, directResponse, CancellationToken.None);
-        continue;
+            // A closed desktop window or timed-out request must not kill Chrome's port.
+            Console.Error.WriteLine($"Desktop bridge request ended: {error.GetType().Name}");
+        }
+        finally
+        {
+            if (requestId is not null) pending.TryRemove(requestId, out _);
+        }
     }
+}
+catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+finally
+{
+    lifetime.Cancel();
+    await reader;
+}
 
-    await pipeWait;
-    var desktopRequest = await NativeMessageFraming.ReadAsync(pipe, CancellationToken.None);
-    if (desktopRequest is null)
+async Task WriteChromeAsync(BridgeEnvelope response)
+{
+    await outputGate.WaitAsync(lifetime.Token);
+    try { await NativeMessageFraming.WriteAsync(chromeOutput, response, lifetime.Token); }
+    finally { outputGate.Release(); }
+}
+
+async Task ReadChromeAsync()
+{
+    try
     {
-        continue;
+        while (!lifetime.IsCancellationRequested)
+        {
+            var message = await NativeMessageFraming.ReadAsync(chromeInput, lifetime.Token);
+            if (message is null) break;
+            // Only response messages resolve desktop requests. Health probes and
+            // favorites operations can arrive while a translation is pending.
+            if (message.MessageType is "bridge.health.result" or "translation.result" or "bridge.error")
+            {
+                if (pending.TryGetValue(message.RequestId, out var completion)) completion.TrySetResult(message);
+                continue;
+            }
+            var response = message.MessageType switch
+            {
+                "bridge.health" => BridgeEnvelope.Create("bridge.health.result", message.RequestId,
+                    new { available = true, host = "qtranslator-bridge", protocolVersion = BridgeEnvelope.CurrentVersion }),
+                "favorites.read" => BridgeEnvelope.Create("favorites.result", message.RequestId,
+                    new { favorites = await SharedFavoriteStore.LoadAsync() }),
+                "favorites.write" => await WriteFavoritesAsync(message),
+                "favorites.patch" => await PatchFavoritesAsync(message),
+                _ => BridgeEnvelope.Create("bridge.error", message.RequestId,
+                    new { code = "unsupported_message", message = "Unsupported direct native-host request." })
+            };
+            await WriteChromeAsync(response);
+        }
     }
-
-    await NativeMessageFraming.WriteAsync(chromeOutput, desktopRequest, CancellationToken.None);
-    var extensionResponse = await chromeRead;
-    if (extensionResponse is null)
+    catch (Exception error) when (error is IOException or OperationCanceledException or JsonException)
     {
-        break;
+        Console.Error.WriteLine($"Chrome bridge connection ended: {error.GetType().Name}");
     }
-
-    await NativeMessageFraming.WriteAsync(pipe, extensionResponse, CancellationToken.None);
+    finally { lifetime.Cancel(); }
 }
 
 static async Task<BridgeEnvelope> PatchFavoritesAsync(BridgeEnvelope request)

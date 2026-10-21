@@ -8,6 +8,7 @@ Qtranslator is an independent Windows application with Translation and AI Chat t
 - Supports OpenAI Chat Completions / Responses and Anthropic Messages, streaming, cancellation, retry, and multi-turn text conversations.
 - Settings, favorites, logs and encrypted API configuration use `%LOCALAPPDATA%/Qtranslator/`.
 - Load the separate Qtranslator companion extension for Chrome local translation. Keep the original Translator extension installed. Automatic webpage capture is disabled by default.
+- Version 1.2.2 checks the live browser connection at startup. Use the desktop connection check and the extension settings' reconnect button to diagnose and recover a disconnected native host.
 
 See [the Chinese setup and isolation guide](docs/QTRANSLATOR_AI_ZH.md) and [validation report](docs/QTRANSLATOR_AI_TEST_REPORT_ZH.md).
 
