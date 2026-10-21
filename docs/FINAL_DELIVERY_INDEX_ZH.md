@@ -1,5 +1,7 @@
 # Translator 第一阶段最终交付索引
 
+> 第二阶段当前稳定候选为 Windows + 配套 Chrome 扩展 v1.1.8。其设计、使用和测试文档分别位于 `docs/stage-2/STAGE2_DESIGN_ZH.md`、`docs/stage-2/STAGE2_FINAL_USER_GUIDE_ZH.md` 和 `docs/stage-2/TEST_REPORT_V1.1.8_FINAL_ZH.md`。第一阶段浏览器独立版仍保持独立，不被第二阶段覆盖。
+
 交付版本：1.0.0-rc.1  
 交付日期：2026-07-29  
 代码仓库：`Wq5881898/translator`

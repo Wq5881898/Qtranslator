@@ -92,8 +92,17 @@ h1 {
 }
 
 .phonetic {
-  color: #607066;
-  font-family: ui-monospace, monospace;
+  color: #246b45;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.part-of-speech {
+  color: #52635a;
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 600;
 }
 
 .result {
@@ -202,6 +211,12 @@ output {
 time {
   color: #607066;
   font-size: 12px;
+}
+
+.section-heading span.error {
+  max-width: 260px;
+  color: #a03b2c;
+  line-height: 1.4;
 }
 
 .favorite-group {

@@ -1,6 +1,9 @@
 import { type FormEvent, useEffect, useState } from 'react';
 
 import { FAVORITES_STORAGE_KEY } from '../../src/core/favorites';
+import { FAVORITES_SYNC_METADATA_KEY } from '../../src/core/favorites-sync';
+import { BRIDGE_STATUS_KEY } from '../../src/core/stage2-bridge';
+import type { BridgeStatus } from '../../src/core/native-connection';
 import {
   normalizeSettings,
   TRANSLATOR_SETTINGS_KEY,
@@ -16,20 +19,52 @@ const EMPTY_SETTINGS: TranslatorSettings = {
 
 export function App() {
   const [settings, setSettings] = useState(EMPTY_SETTINGS);
+  const [automaticCapture, setAutomaticCapture] = useState(false);
   const [clearArmed, setClearArmed] = useState(false);
+  const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus>();
+  const [checkingBridge, setCheckingBridge] = useState(false);
+  const [bridgeCheckError, setBridgeCheckError] = useState('');
   const [status, setStatus] = useState(
     'US English pronunciation is active. Chrome local translation is the default.',
   );
 
   useEffect(() => {
     let active = true;
+    let changed = false;
+    const listener = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+      if (area === 'session' && changes[BRIDGE_STATUS_KEY]) {
+        changed = true;
+        if (active) setBridgeStatus(changes[BRIDGE_STATUS_KEY].newValue as BridgeStatus);
+      }
+    };
+    browser.storage.onChanged.addListener(listener);
+    void browser.storage.session.get(BRIDGE_STATUS_KEY).then(stored => {
+      if (active && !changed) setBridgeStatus(stored[BRIDGE_STATUS_KEY] as BridgeStatus | undefined);
+    }).catch(() => undefined);
+    return () => { active = false; browser.storage.onChanged.removeListener(listener); };
+  }, []);
+
+  async function checkBridge() {
+    setCheckingBridge(true);
+    setBridgeCheckError('');
+    try {
+      const response = await browser.runtime.sendMessage({ type: 'CHECK_STAGE2_BRIDGE' });
+      if (!response?.ok) setBridgeCheckError(response?.error ?? '连接检查未返回结果，请重新加载插件。');
+    } catch (error) {
+      setBridgeCheckError(error instanceof Error ? error.message : '连接检查失败。');
+    } finally { setCheckingBridge(false); }
+  }
+
+  useEffect(() => {
+    let active = true;
 
     void browser.storage.local
-      .get(TRANSLATOR_SETTINGS_KEY)
+      .get([TRANSLATOR_SETTINGS_KEY, 'qtranslatorAutomaticWebCapture'])
       .then((stored) => {
         if (!active) {
           return;
         }
+        setAutomaticCapture(stored.qtranslatorAutomaticWebCapture === true);
 
         const saved = stored[TRANSLATOR_SETTINGS_KEY] as
           | Partial<TranslatorSettings>
@@ -68,6 +103,7 @@ export function App() {
     try {
       await browser.storage.local.set({
         [TRANSLATOR_SETTINGS_KEY]: normalized,
+        qtranslatorAutomaticWebCapture: automaticCapture,
       });
       setSettings(normalized);
       setStatus(
@@ -90,8 +126,11 @@ export function App() {
       await browser.storage.local.remove([
         TRANSLATOR_SETTINGS_KEY,
         FAVORITES_STORAGE_KEY,
+        FAVORITES_SYNC_METADATA_KEY,
+        'qtranslatorAutomaticWebCapture',
       ]);
       setSettings(EMPTY_SETTINGS);
+      setAutomaticCapture(false);
       setClearArmed(false);
       setStatus('Local settings and favorites were cleared.');
     } catch {
@@ -101,13 +140,29 @@ export function App() {
 
   return (
     <main>
-      <p className="eyebrow">Stage 1 release candidate</p>
-      <h1>Translator settings</h1>
+      <p className="eyebrow">Version {browser.runtime.getManifest().version}</p>
+      <h1>Qtranslator settings</h1>
       <p className="intro">
         Pronunciation, settings, and favorites stay in this browser. Translation runs locally in Chrome by default.
       </p>
 
+      <section className="privacy-card" aria-labelledby="bridge-heading">
+        <h2 id="bridge-heading">桌面连接</h2>
+        <p role="status">{bridgeStatus?.message ?? '尚未检查本机桥接。请先从 Windows 文件资源管理器打开 Qtranslator.exe。'}</p>
+        {bridgeStatus && <p>最近检查：{new Date(bridgeStatus.updatedAt).toLocaleString()}</p>}
+        {bridgeStatus?.detail && <details><summary>Chrome 错误详情</summary><p>{bridgeStatus.detail}</p></details>}
+        <button type="button" disabled={checkingBridge} onClick={() => void checkBridge()}>
+          {checkingBridge ? '正在检查…' : '检查并重连'}
+        </button>
+        {bridgeCheckError && <p role="alert">{bridgeCheckError}</p>}
+        <p>此处检查浏览器与桥接程序的连接。桌面程序中的“检查连接”会验证完整路径。AI 对话不依赖此插件。</p>
+      </section>
+
       <form onSubmit={saveSettings}>
+        <label className="checkbox-label">
+          <input type="checkbox" checked={automaticCapture} onChange={event => setAutomaticCapture(event.target.checked)} />
+          自动捕获网页划词（默认关闭，可与旧 Translator 插件并存）
+        </label>
         <label>
           English pronunciation
           <select
@@ -154,7 +209,7 @@ export function App() {
           />
         </label>
         <p className="notice">
-          Azure is optional. Its key is saved only in Chrome extension storage, but it is not encrypted by Translator. Leave it blank and keep fallback off if you do not need it.
+          Azure is optional. Its key is saved only in Chrome extension storage, but it is not encrypted by Qtranslator. Leave it blank and keep fallback off if you do not need it.
         </p>
 
         <label>
@@ -179,7 +234,7 @@ export function App() {
       <section className="privacy-card">
         <h2>Privacy and local data</h2>
         <p>
-          Translator does not upload favorites, settings, browsing history, complete webpages, screenshots, or audio. Azure receives selected English text only when you explicitly enable it and Chrome local translation fails.
+          Qtranslator does not upload favorites, settings, browsing history, complete webpages, screenshots, or audio. Azure receives selected English text only when you explicitly enable it and Chrome local translation fails.
         </p>
         <button
           className={clearArmed ? 'danger armed' : 'danger'}

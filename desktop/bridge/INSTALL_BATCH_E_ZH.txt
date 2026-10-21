@@ -1,0 +1,6 @@
+Qtranslator 独立桥接
+
+完整解压便携包，运行 desktop/Qtranslator.exe，程序将注册独立的 com.wq5881898.qtranslator 主机。
+在 Chrome 加载本包 extension 中的 Qtranslator 插件。
+不要删除、停用或替换旧 Translator 插件。旧程序与新程序使用不同注册项、插件 ID 和命名管道。
+截图翻译 Ctrl+Alt+X；AI 截图 Ctrl+Shift+D。旧 Translator 的 Ctrl+Shift+X 保留给旧程序。

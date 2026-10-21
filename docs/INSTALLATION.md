@@ -1,5 +1,14 @@
 # Installation and Update Guide
 
+## Stage 2 Windows final (v1.1.8)
+
+1. Run `Translator-Setup-v1.1.8.exe`. It installs per user and does not require PowerShell or manual Bridge registry editing.
+2. Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `%LOCALAPPDATA%\Programs\Translator\extension`.
+3. On upgrade, run the new installer, then reload Translator on `chrome://extensions` or fully restart Chrome.
+4. Start Translator from the desktop shortcut. Use `Ctrl+Alt+A` or **Select screen region** to capture, recognize, and translate.
+
+The installer registers the Native Messaging Bridge automatically. Favorites remain under `%LOCALAPPDATA%\Translator`; diagnostic logs are written to `%LOCALAPPDATA%\Translator\logs\desktop.log`. The production installer does not contain `Translator.TechnicalValidation.exe`, which is only a source/CI tool.
+
 ## Chrome developer installation
 
 1. Download and extract the release-candidate ZIP.

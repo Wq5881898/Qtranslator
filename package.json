@@ -1,6 +1,6 @@
 {
-  "name": "translator-extension",
-  "version": "1.0.0-rc.1",
+  "name": "qtranslator-extension",
+  "version": "1.2.2",
   "private": true,
   "description": "A lightweight local-first English-learning translation extension.",
   "license": "MIT",

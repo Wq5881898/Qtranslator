@@ -17,6 +17,11 @@ function csvCell(value: string): string {
   return /[",\r\n]/u.test(value) ? `"${value.replace(/"/gu, '""')}"` : value;
 }
 
+function favoriteDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value.slice(0, 10) : date.toISOString().slice(0, 10);
+}
+
 function parseCsvRows(text: string): string[][] {
   const source = text.replace(/^\uFEFF/u, '');
   const rows: string[][] = [];
@@ -72,7 +77,7 @@ export function serializeFavoritesCsv(favorites: FavoriteEntry[]): string {
     favorite.originalText,
     favorite.phonetic ?? '',
     favorite.translatedText,
-    favorite.firstFavoritedAt,
+    favoriteDate(favorite.firstFavoritedAt),
   ]);
 
   return `\uFEFF${[CSV_HEADERS, ...rows]

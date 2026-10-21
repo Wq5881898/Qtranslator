@@ -12,6 +12,8 @@ export type TranslationResult = {
   textKind: TextKind;
   provider: string;
   phonetic?: string;
+  partsOfSpeech?: string[];
+  meanings?: Array<{ partOfSpeech?: string; translatedText: string }>;
   alternatives?: string[];
 };
 

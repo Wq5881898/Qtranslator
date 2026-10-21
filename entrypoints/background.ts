@@ -7,6 +7,11 @@ import {
 } from '../src/core/messages';
 import { normalizeSelection } from '../src/core/selection';
 import { mockTranslationProvider } from '../src/providers/mock-translation-provider';
+import {
+  checkStage2NativeHost,
+  registerStage2TranslationPort,
+  startStage2NativeBridge,
+} from '../src/core/stage2-bridge';
 
 const LATEST_TRANSLATION_KEY = 'latestSelectionTranslation';
 
@@ -41,10 +46,16 @@ async function captureSelection(
 }
 
 export default defineBackground(() => {
+  browser.runtime.onConnect.addListener((port) => {
+    registerStage2TranslationPort(port);
+  });
+  startStage2NativeBridge();
+  browser.runtime.onStartup.addListener(startStage2NativeBridge);
+
   browser.runtime.onInstalled.addListener(() => {
     browser.contextMenus.create({
       id: 'translator-open-side-panel',
-      title: 'Translate selection',
+      title: 'Qtranslator: Translate selection',
       contexts: ['selection'],
     });
 
@@ -103,6 +114,18 @@ export default defineBackground(() => {
         }
 
         return { ok: true, data };
+      }
+
+      if (message.type === 'CHECK_STAGE2_BRIDGE') {
+        try {
+          const data = await checkStage2NativeHost();
+          return { ok: true, data } as ExtensionResponse;
+        } catch (error) {
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : 'Stage 2 bridge check failed.',
+          };
+        }
       }
 
       try {

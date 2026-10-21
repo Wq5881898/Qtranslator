@@ -1,9 +1,9 @@
 # Translator 第一阶段最终设计方案
 
-文档版本：1.0  
+文档版本：1.1  
 对应软件版本：1.0.0-rc.1  
 维护基线：`Wq5881898/translator`  
-最后更新：2026-07-29
+最后更新：2026-07-30
 
 ## 1. 文档目的
 
@@ -463,4 +463,47 @@ Node.js 版本必须满足 `>=22`。
 - 决定收藏交换格式使用 Excel 友好的 UTF-8 CSV。
 - 决定商业词典必须通过合法授权接入，不抓取或复制网站内容。
 
+## 18. 第一阶段与第二阶段的版本关系
+
+第一阶段最终版是可独立运行的 Manifest V3 浏览器插件，负责网页划词、翻译、音标、发音和浏览器本地收藏，不依赖 Windows、Native Host 或 OCR。
+
+第二阶段不是把第一阶段安装包原样嵌入桌面程序，而是在第一阶段插件源码基础上演进为“Windows 桌面程序 + Bridge Host + 配套浏览器插件”的独立交付物。配套插件保留第一阶段主要功能，并增加桌面翻译桥接和共享收藏。
+
+建议长期维护两个发布基线：
+
+- `release/stage1-final`：冻结第一阶段独立插件；
+- `release/stage2-final`：维护桌面程序及其配套插件；
+- 同一浏览器不同时加载两个阶段的插件，避免入口、快捷键和存储混淆；
+- 第二阶段修复不直接覆盖第一阶段发布分支，共享缺陷应分别回归和提交。
+
+## 19. 第一阶段维护文件索引
+
+| 路径 | 具体职责与修改入口 |
+|---|---|
+| `entrypoints/background.ts` | 右键菜单、后台生命周期和消息转发 |
+| `entrypoints/content.ts` | 网页选区监听、规范化和自动划词 |
+| `entrypoints/sidepanel/App.tsx` | 翻译结果、发音、爱心、收藏和状态编排 |
+| `entrypoints/sidepanel/FavoritesTransferControls.tsx` | CSV 导入导出及就近反馈 |
+| `entrypoints/sidepanel/style.css` | 侧边栏和收藏弹窗样式 |
+| `entrypoints/options/App.tsx` | 发音、Azure 备用、隐私与数据清除设置 |
+| `src/core/messages.ts` | 插件内部消息契约 |
+| `src/core/selection.ts` | 文本规范化与单词/句子分类 |
+| `src/core/translation-guard.ts` | 英文校验、长度限制和超时 |
+| `src/core/favorites.ts` | 收藏模型、稳定 ID、增删和去重 |
+| `src/core/favorites-transfer.ts` | CSV 解析、校验、合并与导出 |
+| `src/core/settings.ts` | 设置默认值、读取和旧数据兼容 |
+| `src/core/speech.ts` | Web Speech 英美发音封装 |
+| `src/providers/translation-provider.ts` | 翻译 Provider 统一接口 |
+| `src/providers/chrome-translation-provider.ts` | Chrome 本地翻译和词典组合 |
+| `src/providers/free-dictionary-provider.ts` | 免费词典、音标、词形和释义 |
+| `src/providers/azure-translation-provider.ts` | Azure 可选备用实现 |
+| `src/providers/mock-translation-provider.ts` | Provider 测试替身 |
+| `scripts/verify-release.mjs` | Manifest、权限、版本和文档门禁 |
+| `wxt.config.ts` | 扩展构建、权限和固定 ID 配置 |
+| `package.json` | 构建、测试脚本和依赖 |
+| `PRIVACY.md` | 数据、权限与外部服务声明 |
+| `docs/INSTALLATION.md` | 安装与升级说明 |
+| `docs/TEST_REPORT_STAGE_1.md` | 第一阶段回归留痕 |
+
+构建输出、依赖目录和下载包不是源代码修改入口。维护时先进入表中指定文件，只在接口变化时检查其直接调用方，不默认遍历或改写整个工程。
 

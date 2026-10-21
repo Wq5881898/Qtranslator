@@ -10,6 +10,18 @@ import {
   type FavoriteEntry,
 } from '../../src/core/favorites';
 import {
+  FAVORITES_SYNC_METADATA_KEY,
+  INITIAL_FAVORITES_SYNC_METADATA,
+  parseFavoritesSyncMetadata,
+  retryWithDelays,
+  synchronizeFavorites,
+  type FavoritesSyncMetadata,
+} from '../../src/core/favorites-sync';
+import {
+  patchSharedFavorites,
+  readSharedFavorites,
+} from '../../src/core/shared-favorites';
+import {
   isExtensionMessage,
   type ExtensionResponse,
   type GetLatestTranslationMessage,
@@ -21,9 +33,15 @@ import {
   type TranslatorSettings,
 } from '../../src/core/settings';
 import { browserSpeechPlayer } from '../../src/core/speech';
+import {
+  startStage2TranslationWorker,
+  STAGE2_VISIBLE_TRANSLATOR_PORT,
+} from '../../src/core/stage2-translation-worker';
 import { createAzureTranslationProvider } from '../../src/providers/azure-translation-provider';
 import { chromeTranslationProvider } from '../../src/providers/chrome-translation-provider';
 import type { TranslationResult } from '../../src/providers/translation-provider';
+
+startStage2TranslationWorker(STAGE2_VISIBLE_TRANSLATOR_PORT);
 
 function selectionFromResponse(response: ExtensionResponse): SelectionTranslation | null {
   if (!response.ok || !('data' in response) || response.data === null) {
@@ -69,8 +87,85 @@ export function App() {
   const [foundationResult, setFoundationResult] = useState<string>();
   const [outputIsError, setOutputIsError] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [favoritesSyncStatus, setFavoritesSyncStatus] = useState<
+    'syncing' | 'shared' | 'browser'
+  >('browser');
+  const [favoritesSyncError, setFavoritesSyncError] = useState<string>();
   const requestId = useRef(0);
   const speechRequestId = useRef(0);
+  const favoritesRef = useRef<FavoriteEntry[]>([]);
+  const favoritesSyncMetadata = useRef<FavoritesSyncMetadata>({
+    ...INITIAL_FAVORITES_SYNC_METADATA,
+  });
+  const favoritesSyncInFlight = useRef<Promise<void> | null>(null);
+  const favoritesPatchQueue = useRef<Promise<void>>(Promise.resolve());
+  const favoriteMutationVersion = useRef(0);
+  const lastSharedSyncAttemptAt = useRef(0);
+
+  function applyFavorites(nextFavorites: FavoriteEntry[]) {
+    favoritesRef.current = nextFavorites;
+    setFavorites(nextFavorites);
+  }
+
+  async function saveFavoritesSnapshot(
+    nextFavorites: FavoriteEntry[],
+    metadata: FavoritesSyncMetadata,
+  ) {
+    await browser.storage.local.set({
+      [FAVORITES_STORAGE_KEY]: nextFavorites,
+      [FAVORITES_SYNC_METADATA_KEY]: metadata,
+    });
+    favoritesSyncMetadata.current = metadata;
+    applyFavorites(nextFavorites);
+  }
+
+  async function syncSharedFavorites(
+    withStartupRetry = false,
+    force = false,
+  ): Promise<void> {
+    if (favoritesSyncInFlight.current) {
+      return favoritesSyncInFlight.current;
+    }
+    if (
+      !withStartupRetry &&
+      !force &&
+      Date.now() - lastSharedSyncAttemptAt.current < 30_000
+    ) {
+      return;
+    }
+
+    lastSharedSyncAttemptAt.current = Date.now();
+    const operation = (async () => {
+      setFavoritesSyncStatus('syncing');
+      setFavoritesSyncError(undefined);
+      try {
+        const synchronize = () =>
+          synchronizeFavorites({
+            browserFavorites: favoritesRef.current,
+            metadata: favoritesSyncMetadata.current,
+            readShared: readSharedFavorites,
+            patchShared: patchSharedFavorites,
+          });
+        const result = withStartupRetry
+          ? await retryWithDelays(synchronize)
+          : await synchronize();
+        await saveFavoritesSnapshot(result.favorites, result.metadata);
+        setFavoritesSyncStatus('shared');
+      } catch (error) {
+        setFavoritesSyncStatus('browser');
+        setFavoritesSyncError(
+          error instanceof Error
+            ? error.message
+            : 'The Windows favorites bridge could not be reached.',
+        );
+      }
+    })().finally(() => {
+      favoritesSyncInFlight.current = null;
+    });
+
+    favoritesSyncInFlight.current = operation;
+    return operation;
+  }
 
   async function performTranslation(selectionState: SelectionTranslation) {
     const currentRequest = ++requestId.current;
@@ -123,16 +218,19 @@ export function App() {
     let active = true;
 
     void browser.storage.local
-      .get(FAVORITES_STORAGE_KEY)
-      .then((stored) => {
+      .get([FAVORITES_STORAGE_KEY, FAVORITES_SYNC_METADATA_KEY])
+      .then(async (stored) => {
         if (!active) {
           return;
         }
 
         const saved = stored[FAVORITES_STORAGE_KEY];
-        if (Array.isArray(saved)) {
-          setFavorites(saved as FavoriteEntry[]);
-        }
+        const browserFavorites = Array.isArray(saved) ? saved as FavoriteEntry[] : [];
+        favoritesSyncMetadata.current = parseFavoritesSyncMetadata(
+          stored[FAVORITES_SYNC_METADATA_KEY],
+        );
+        applyFavorites(browserFavorites);
+        await syncSharedFavorites(true);
       })
       .catch(() => {
         if (!active) {
@@ -140,7 +238,7 @@ export function App() {
         }
 
         const message =
-          'Favorites could not be loaded. Check browser storage and reopen Translator.';
+          'Favorites could not be loaded. Check browser storage and reopen Qtranslator.';
         setStatus(message);
         setFoundationResult(message);
         setOutputIsError(true);
@@ -198,11 +296,29 @@ export function App() {
   }, []);
 
   async function persistFavorites(nextFavorites: FavoriteEntry[]) {
+    const nextIds = new Set(nextFavorites.map((favorite) => favorite.id));
+    const currentFavorites = favoritesRef.current;
+    const currentById = new Map(
+      currentFavorites.map((favorite) => [favorite.id, favorite]),
+    );
+    const mustUploadBrowserFallback =
+      favoritesSyncMetadata.current.dirty ||
+      !favoritesSyncMetadata.current.migrationCompleted;
+    const upsert = mustUploadBrowserFallback
+      ? nextFavorites
+      : nextFavorites.filter(
+          (favorite) =>
+            JSON.stringify(currentById.get(favorite.id)) !== JSON.stringify(favorite),
+        );
+    const removeIds = currentFavorites
+      .filter((favorite) => !nextIds.has(favorite.id))
+      .map((favorite) => favorite.id);
+
     try {
-      await browser.storage.local.set({
-        [FAVORITES_STORAGE_KEY]: nextFavorites,
+      await saveFavoritesSnapshot(nextFavorites, {
+        ...favoritesSyncMetadata.current,
+        dirty: true,
       });
-      setFavorites(nextFavorites);
     } catch {
       const message =
         'Favorites could not be saved. Check browser storage and try again.';
@@ -211,7 +327,47 @@ export function App() {
       setOutputIsError(true);
       throw new Error(message);
     }
+
+    const mutationVersion = ++favoriteMutationVersion.current;
+    setFavoritesSyncStatus('syncing');
+    setFavoritesSyncError(undefined);
+    favoritesPatchQueue.current = favoritesPatchQueue.current
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          const sharedFavorites = await patchSharedFavorites(upsert, removeIds);
+          if (mutationVersion === favoriteMutationVersion.current) {
+            await saveFavoritesSnapshot(sharedFavorites, {
+              migrationCompleted: true,
+              dirty: false,
+            });
+            setFavoritesSyncStatus('shared');
+          }
+        } catch (error) {
+          if (mutationVersion === favoriteMutationVersion.current) {
+            setFavoritesSyncStatus('browser');
+            setFavoritesSyncError(
+              error instanceof Error
+                ? error.message
+                : 'The Windows favorites bridge could not be reached.',
+            );
+          }
+        }
+      });
   }
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void syncSharedFavorites();
+    };
+    const onFocus = () => void syncSharedFavorites();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   async function toggleCurrentFavorite() {
     const translation = latest?.translation;
@@ -310,15 +466,18 @@ export function App() {
 
   return (
     <main className="panel">
-            <p className="eyebrow">Stage 1 release candidate</p>
-      <h1>Translator</h1>
+      <p className="eyebrow">Version {browser.runtime.getManifest().version}</p>
+      <h1>Qtranslator</h1>
       <p className="intro">
         Translate locally, then keep useful words and sentences in this browser.
       </p>
       <button
         className="secondary favorites-trigger"
         type="button"
-        onClick={() => setShowFavorites(true)}
+        onClick={() => {
+          setShowFavorites(true);
+          void syncSharedFavorites(false, true);
+        }}
       >
         Open favorites ({favorites.length})
       </button>
@@ -415,7 +574,27 @@ export function App() {
               <div>
                 <h2 id="favorites-heading">Favorites</h2>
                 <span>{favorites.length} saved locally</span>
+                <span>
+                  {favoritesSyncStatus === 'shared'
+                    ? 'Shared with the Windows app'
+                    : favoritesSyncStatus === 'syncing'
+                      ? 'Checking shared favorites…'
+                      : 'Browser storage · sync paused'}
+                </span>
+                {favoritesSyncError ? (
+                  <span className="error">
+                    Sync failed: {favoritesSyncError}
+                  </span>
+                ) : null}
               </div>
+              <button
+                className="link-button"
+                type="button"
+                disabled={favoritesSyncStatus === 'syncing'}
+                onClick={() => void syncSharedFavorites(false, true)}
+              >
+                Sync now
+              </button>
               <button
                 className="close-button"
                 type="button"

@@ -32,11 +32,16 @@ export type TranslateMockMessage = {
   payload: TranslationRequest;
 };
 
+export type CheckStage2BridgeMessage = {
+  type: 'CHECK_STAGE2_BRIDGE';
+};
+
 export type ExtensionMessage =
   | CaptureSelectionMessage
   | GetLatestTranslationMessage
   | TranslationUpdatedMessage
-  | TranslateMockMessage;
+  | TranslateMockMessage
+  | CheckStage2BridgeMessage;
 
 export type ExtensionResponse =
   | { ok: true }
@@ -54,6 +59,7 @@ export function isExtensionMessage(value: unknown): value is ExtensionMessage {
     type === 'CAPTURE_SELECTION' ||
     type === 'GET_LATEST_TRANSLATION' ||
     type === 'TRANSLATION_UPDATED' ||
-    type === 'TRANSLATE_MOCK'
+    type === 'TRANSLATE_MOCK' ||
+    type === 'CHECK_STAGE2_BRIDGE'
   );
 }

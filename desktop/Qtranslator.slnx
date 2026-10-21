@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Qtranslator.Core/Qtranslator.Core.csproj" />
+  <Project Path="Qtranslator.Desktop/Qtranslator.Desktop.csproj" />
+  <Project Path="Qtranslator.BridgeHost/Qtranslator.BridgeHost.csproj" />
+  <Project Path="Qtranslator.TechnicalValidation/Qtranslator.TechnicalValidation.csproj" />
+</Solution>

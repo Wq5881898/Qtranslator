@@ -29,7 +29,12 @@ describe('favorites CSV transfer', () => {
     const text = serializeFavoritesCsv([word, sentence]);
 
     expect(text.startsWith('\uFEFFType,English,Phonetic,Chinese translation,First saved')).toBe(true);
-    expect(parseFavoritesCsv(text)).toEqual([word, sentence]);
+    expect(text).toContain('2026-07-28\r\n');
+    expect(text).not.toContain('2026-07-28T10:00:00.000Z');
+    expect(parseFavoritesCsv(text)).toEqual([
+      { ...word, firstFavoritedAt: '2026-07-28' },
+      { ...sentence, firstFavoritedAt: '2026-07-28' },
+    ]);
   });
 
   it('rejects unrelated or malformed CSV without partial data', () => {

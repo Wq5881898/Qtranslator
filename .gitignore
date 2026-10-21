@@ -6,3 +6,8 @@ coverage/
 .env.*
 !.env.example
 .DS_Store
+.tools/
+desktop/**/bin/
+desktop/**/obj/
+artifacts/
+.tmp-e2e/

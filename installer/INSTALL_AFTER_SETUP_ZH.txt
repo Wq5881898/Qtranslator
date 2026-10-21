@@ -1,0 +1,12 @@
+Qtranslator 安装后操作
+
+1. 启动 Qtranslator.exe。可以保留旧 Translator 运行，无需卸载、停止或覆盖旧程序。
+2. 如需本地翻译，在 Chrome 的 chrome://extensions 开启开发者模式，加载：
+   %LOCALAPPDATA%\Programs\Qtranslator\extension
+   此插件名称为 Qtranslator，与旧 Translator ID 不同。保留旧插件及其加载目录。
+3. Qtranslator 翻译截图快捷键为 Ctrl+Alt+X；AI 截图为 Ctrl+Shift+D。
+   Ctrl+Shift+X 留给旧 Translator。
+4. 在 AI 对话 → API 配置填入你的服务 URL、模型和 Key，然后发送问题。
+
+新程序配置、收藏和日志位于 %LOCALAPPDATA%\Qtranslator。
+安装与卸载不修改旧 Translator 的目录、注册项或收藏。
